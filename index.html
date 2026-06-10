@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONEP — Liste de Présence</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bleu:#003B6F;--bleu-clair:#0065B3;--or:#C9962A;--or-clair:#F0C060;--fond:#F4F7FB;--blanc:#FFFFFF;--gris:#6B7280;--gris-clair:#E8EDF4;--succes:#1A7F4B;--rouge:#C0392B;--ombre:0 4px 24px rgba(0,59,111,0.10);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--fond);color:#1a2a3a;min-height:100vh;}
+
+.entete-onep{background:var(--blanc);display:grid;grid-template-columns:160px 1fr 165px;border-bottom:2px solid #1a2a3a;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,0.12);}
+.entete-logo{border-right:1.5px solid #1a2a3a;padding:10px 12px;display:flex;align-items:center;justify-content:center;}
+.onep-logo{display:flex;align-items:center;gap:8px;}
+.onep-text{display:flex;flex-direction:column;}
+.onep-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#003B6F;line-height:1;letter-spacing:1px;}
+.onep-full{font-size:8px;font-weight:700;color:#003B6F;line-height:1.4;margin-top:2px;}
+.entete-centre{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 12px;gap:4px;border-right:1.5px solid #1a2a3a;}
+.entete-enregistrement{font-size:11px;font-weight:700;color:#1a2a3a;text-transform:uppercase;border-bottom:1px solid #ccc;padding-bottom:4px;width:100%;text-align:center;}
+.entete-titre{font-size:14px;font-weight:800;color:#003B6F;text-transform:uppercase;text-align:center;}
+.entete-codes{padding:0;display:flex;flex-direction:column;justify-content:center;}
+.code-row{font-size:10px;color:#1a2a3a;padding:4px 10px;border-bottom:1px solid #ddd;line-height:1.3;}
+.code-row:last-child{border-bottom:none;}
+.code-label{font-weight:700;}
+.gold-bar{height:3px;background:linear-gradient(90deg,var(--bleu),var(--or),var(--bleu));}
+
+.config-toggle-bar{background:var(--bleu);display:flex;justify-content:center;}
+.btn-toggle-config{display:flex;align-items:center;gap:7px;padding:9px 20px;background:none;border:none;color:var(--or-clair);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+.toggle-icon{font-size:14px;transition:transform 0.3s;display:inline-block;}
+.toggle-icon.open{transform:rotate(180deg);}
+
+.config-panel{background:linear-gradient(135deg,#1a3a5c,#003B6F);border-bottom:3px solid var(--or);overflow:hidden;transition:max-height 0.4s ease;max-height:0;}
+.config-panel.expanded{max-height:900px;}
+.config-inner{padding:20px 16px 24px;max-width:560px;margin:0 auto;}
+.config-title{color:var(--or-clair);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;}
+.config-grid{display:grid;gap:12px;}
+.config-field label{display:block;font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:5px;}
+.config-field input,.config-field textarea,.config-field select{width:100%;padding:10px 13px;background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.15);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--blanc);outline:none;-webkit-appearance:none;}
+.config-field input:focus,.config-field textarea:focus,.config-field select:focus{border-color:var(--or-clair);background:rgba(255,255,255,0.12);}
+.config-field input::placeholder,.config-field textarea::placeholder{color:rgba(255,255,255,0.3);}
+.config-field textarea{resize:none;height:64px;line-height:1.5;}
+.config-field select option{background:#1a3a5c;}
+.config-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.webhook-block{margin-top:4px;padding:12px 14px;background:rgba(255,255,255,0.06);border-radius:10px;border:1px dashed rgba(255,255,255,0.2);}
+.webhook-block label{display:block;font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:6px;}
+.webhook-block input{width:100%;padding:9px 12px;background:rgba(0,0,0,0.2);border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:monospace;font-size:11px;color:var(--or-clair);outline:none;}
+.webhook-block input::placeholder{color:rgba(255,255,255,0.25);font-style:italic;}
+.ws-status{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;}
+.ws-dot{width:7px;height:7px;border-radius:50%;background:#888;flex-shrink:0;}
+.ws-dot.ok{background:#2ecc71;}.ws-dot.ko{background:var(--rouge);}
+.ws-txt{color:rgba(255,255,255,0.5);}
+.webhook-fixed{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);border-radius:8px;}
+.webhook-url-txt{font-size:12px;color:#2ecc71;font-weight:600;flex:1;}
+.lock-icon{font-size:14px;}
+.btn-appliquer{width:100%;margin-top:16px;padding:13px;background:linear-gradient(135deg,var(--or),#E8A820);color:var(--bleu);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+
+.container{max-width:560px;margin:0 auto;padding:20px 16px 60px;}
+
+/* QR PANEL */
+.qr-panel{background:var(--blanc);border-radius:14px;padding:20px;box-shadow:var(--ombre);margin-bottom:20px;text-align:center;display:none;}
+.qr-panel.visible{display:block;}
+.qr-panel-title{font-size:14px;font-weight:700;color:var(--bleu);margin-bottom:4px;}
+.qr-panel-sub{font-size:11px;color:var(--gris);margin-bottom:14px;}
+.qr-test-link{font-size:11px;color:var(--bleu-clair);margin-bottom:12px;word-break:break-all;background:#EBF3FF;padding:8px 12px;border-radius:8px;display:block;}
+#qrcode{display:inline-block;padding:12px;background:white;border:1.5px solid var(--gris-clair);border-radius:10px;margin-bottom:12px;}
+.btn-print-qr{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bleu);color:white;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+
+.meeting-card{background:var(--blanc);border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:var(--ombre);border-left:4px solid var(--or);}
+.direction-badge{display:inline-block;background:#EBF3FF;color:var(--bleu-clair);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;}
+.meeting-badge{display:inline-flex;align-items:center;gap:6px;background:#E8F5EE;color:var(--succes);font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;margin-bottom:12px;}
+.badge-dot{width:7px;height:7px;background:var(--succes);border-radius:50%;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.meeting-title{font-family:'Playfair Display',serif;font-size:15px;color:var(--bleu);font-weight:600;line-height:1.4;margin-bottom:14px;}
+.meeting-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.meta-item label{display:block;font-size:10px;font-weight:600;color:var(--gris);text-transform:uppercase;margin-bottom:3px;}
+.meta-item span{font-size:13px;font-weight:500;color:var(--bleu);}
+.meta-lieu{grid-column:1/-1;}
+
+.section-title{font-size:11px;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:1px;margin:20px 0 12px;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--gris-clair);}
+
+.form-card{background:var(--blanc);border-radius:14px;padding:20px;box-shadow:var(--ombre);margin-bottom:16px;}
+.field-group{margin-bottom:14px;}
+.field-group:last-child{margin-bottom:0;}
+.field-label{display:block;font-size:10px;font-weight:700;color:var(--gris);text-transform:uppercase;margin-bottom:6px;}
+.field-label span{color:var(--rouge);}
+.field-input{width:100%;padding:11px 14px;border:1.5px solid var(--gris-clair);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;color:#1a2a3a;background:var(--fond);outline:none;-webkit-appearance:none;}
+.field-input:focus{border-color:var(--bleu-clair);box-shadow:0 0 0 3px rgba(0,101,179,0.10);background:var(--blanc);}
+.field-input::placeholder{color:#b0bcc8;}
+select.field-input{cursor:pointer;}
+.field-row{display:grid;grid-template-columns:90px 1fr;gap:10px;}
+.indicatif-box{padding:11px 10px;border:1.5px solid var(--gris-clair);border-radius:9px;background:var(--fond);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;}
+
+.signature-card{background:var(--blanc);border-radius:14px;padding:20px;box-shadow:var(--ombre);margin-bottom:16px;}
+.sig-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.sig-label{font-size:10px;font-weight:700;color:var(--gris);text-transform:uppercase;}
+.sig-label span{color:var(--rouge);}
+.btn-effacer{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--rouge);background:#FEF2F2;border:1.5px solid #FECACA;border-radius:7px;padding:5px 12px;cursor:pointer;}
+#signatureCanvas{width:100%;height:150px;border:1.5px dashed #C0CDD8;border-radius:10px;background:#FAFCFF;cursor:crosshair;display:block;touch-action:none;}
+#signatureCanvas.active{border-color:var(--bleu-clair);border-style:solid;}
+.sig-hint{text-align:center;font-size:12px;color:#b0bcc8;margin-top:8px;}
+
+.btn-submit{width:100%;padding:16px;background:linear-gradient(135deg,var(--bleu),var(--bleu-clair));color:var(--blanc);border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,59,111,0.30);}
+.btn-submit:disabled{opacity:0.6;cursor:not-allowed;}
+.note{font-size:11px;color:var(--gris);margin-top:12px;text-align:center;line-height:1.5;}
+.note span{color:var(--rouge);}
+
+.success-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:40px 24px;}
+.success-screen.visible{display:flex;animation:fadeIn 0.5s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.success-icon{width:80px;height:80px;background:#E8F5EE;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 0 0 12px rgba(26,127,75,0.08);}
+.success-icon svg{width:38px;height:38px;stroke:var(--succes);stroke-width:2.5;fill:none;}
+.success-title{font-family:'Playfair Display',serif;font-size:26px;color:var(--bleu);margin-bottom:10px;}
+.success-msg{font-size:14px;color:var(--gris);margin-bottom:24px;line-height:1.6;}
+.success-time{background:var(--blanc);border:1.5px solid var(--gris-clair);border-radius:12px;padding:14px 28px;font-size:14px;color:var(--bleu);font-weight:600;box-shadow:var(--ombre);margin-bottom:8px;}
+.success-sync{font-size:12px;font-weight:600;}
+.success-sync.ok{color:var(--succes);}.success-sync.err{color:var(--gris);}
+
+.error-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:40px 24px;}
+.error-screen.visible{display:flex;}
+.error-icon{font-size:48px;margin-bottom:16px;}
+.error-title{font-family:'Playfair Display',serif;font-size:22px;color:var(--rouge);margin-bottom:10px;}
+.error-msg{font-size:13px;color:var(--gris);line-height:1.6;}
+
+.footer{background:var(--bleu);color:rgba(255,255,255,0.6);font-size:11px;text-align:center;padding:16px 20px;line-height:1.6;}
+.footer strong{color:var(--or-clair);}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--succes);color:white;padding:12px 24px;border-radius:30px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.2);transition:transform 0.35s ease;z-index:999;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.err{background:var(--rouge);}
+@media print{.config-toggle-bar,.config-panel,.btn-print-qr,.entete-onep,.gold-bar,.qr-test-link{display:none!important;}body{background:white;}}
+</style>
+</head>
+<body>
+
+<div class="entete-onep">
+  <div class="entete-logo">
+    <div class="onep-logo">
+      <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+        <circle cx="19" cy="19" r="18" stroke="#003B6F" stroke-width="2" fill="white"/>
+        <path d="M19 6C19 6 10 16 10 22C10 27.5 14 32 19 32C24 32 28 27.5 28 22C28 16 19 6 19 6Z" fill="#0065B3"/>
+        <path d="M19 12C19 12 13 19 13 23C13 26.3 15.7 29 19 29C22.3 29 25 26.3 25 23C25 19 19 12 19 12Z" fill="white" opacity="0.4"/>
+      </svg>
+      <div class="onep-text">
+        <span class="onep-name">ONEP</span>
+        <span class="onep-full">OFFICE NATIONAL<br>DE L'EAU POTABLE</span>
+      </div>
+    </div>
+  </div>
+  <div class="entete-centre">
+    <div class="entete-enregistrement">ENREGISTREMENT</div>
+    <div class="entete-titre">LISTE DE PRÉSENCE</div>
+  </div>
+  <div class="entete-codes">
+    <div class="code-row"><span class="code-label">Code :</span> ENG/DG/LP/10</div>
+    <div class="code-row"><span class="code-label">Créé :</span> 08/10/2015</div>
+    <div class="code-row"><span class="code-label">Révisé :</span> 18/12/2024</div>
+    <div class="code-row"><span class="code-label">Version :</span> 02</div>
+  </div>
+</div>
+<div class="gold-bar"></div>
+
+<div class="config-toggle-bar" id="configToggleBar">
+  <button class="btn-toggle-config" onclick="toggleConfig()">
+    ⚙️ Configurer la réunion
+    <span class="toggle-icon" id="toggleIcon">▼</span>
+  </button>
+</div>
+
+<div class="config-panel" id="configPanel">
+  <div class="config-inner">
+    <div class="config-title">⚙️ Paramètres de la réunion</div>
+    <div class="config-grid">
+      <div class="config-field">
+        <label>Direction / Structure organisatrice</label>
+        <select id="cfg-direction">
+          <optgroup label="── Direction Générale ──">
+            <option value="DG">DG — Direction Générale</option>
+            <option value="DGA">DGA — Direction Générale Adjointe</option>
+            <option value="DBCGSI">DBCGSI — Département Budget, Contrôle de Gestion et SI</option>
+            <option value="SCR">SCR — Service Communication et Relations Publiques</option>
+            <option value="SRSEP">SRSEP — Service Représentation Régionale et Suivi</option>
+          </optgroup>
+          <optgroup label="── Pôle Support ──">
+            <option value="DAQ" selected>DAQ — Direction de l'Audit et de la Qualité</option>
+            <option value="DAJC">DAJC — Direction des Affaires Juridiques et du Contentieux</option>
+            <option value="DFC">DFC — Direction Financière et Comptable</option>
+            <option value="DRH">DRH — Direction des Ressources Humaines</option>
+            <option value="DLAM">DLAM — Direction de la Logistique et des Marchés</option>
+          </optgroup>
+          <optgroup label="── Pôle Métier ──">
+            <option value="DEPD">DEPD — Direction des Études et de la Planification</option>
+            <option value="DMPRE">DMPRE — Direction Mobilisation et Protection des Ressources en Eau</option>
+            <option value="DP">DP — Direction des Projets</option>
+            <option value="DCEP">DCEP — Direction du Contrôle de l'Exploitation et du Patrimoine</option>
+            <option value="LACQE">LACQE — Laboratoire d'Analyses et du Contrôle de la Qualité de l'Eau</option>
+          </optgroup>
+          <optgroup label="── Comités ──">
+            <option value="CNA">CNA — Comité Nomination et Rémunération</option>
+            <option value="CSG">CSG — Comité Stratégie et Gouvernance</option>
+            <option value="CAGR">CAGR — Comité Audit et Gestion des Risques</option>
+          </optgroup>
+          <option value="Autre">Autre structure</option>
+        </select>
+      </div>
+      <div class="config-field">
+        <label>Objet / Titre de la réunion</label>
+        <textarea id="cfg-objet" placeholder="Ex : Réunion de lancement de l'audit patrimoine hydraulique"></textarea>
+      </div>
+      <div class="config-row">
+        <div class="config-field">
+          <label>Date</label>
+          <input type="text" id="cfg-date" placeholder="Ex : lundi 9 juin 2026">
+        </div>
+        <div class="config-field">
+          <label>Heure de début</label>
+          <input type="text" id="cfg-heure" placeholder="Ex : 09:00">
+        </div>
+      </div>
+      <div class="config-field">
+        <label>Lieu</label>
+        <input type="text" id="cfg-lieu" placeholder="Ex : Siège ONEP, Abidjan">
+      </div>
+      <div class="webhook-block">
+        <label>🔗 Google Apps Script — Connexion Google Sheets</label>
+        <div class="webhook-fixed">
+          <span class="ws-dot ok"></span>
+          <span class="webhook-url-txt">Connexion Google Sheets configurée ✔</span>
+          <span class="lock-icon">🔒</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn-appliquer" onclick="appliquerConfig()">✔ Appliquer et générer le QR Code</button>
+  </div>
+</div>
+
+<!-- FORM VIEW -->
+<div id="formView" style="display:none;">
+  <div class="container">
+
+    <!-- QR PANEL -->
+    <div class="qr-panel" id="qrPanel">
+      <div class="qr-panel-title">📱 QR Code de cette réunion</div>
+      <div class="qr-panel-sub">Affichez ce QR code — les participants le scannent pour accéder au formulaire</div>
+      <div id="qrcode"></div>
+      <a class="qr-test-link" id="qrTestLink" target="_blank">🔗 Tester le lien participant</a>
+      <br>
+      <button class="btn-print-qr" onclick="window.print()">🖨️ Imprimer le QR Code</button>
+    </div>
+
+    <!-- MEETING CARD -->
+    <div class="meeting-card">
+      <div class="direction-badge" id="directionBadge">—</div>
+      <div class="meeting-badge"><span class="badge-dot"></span> RÉUNION EN COURS</div>
+      <div class="meeting-title" id="meetingTitle">—</div>
+      <div class="meeting-meta">
+        <div class="meta-item"><label>Date</label><span id="meetingDate">—</span></div>
+        <div class="meta-item"><label>Heure de début</label><span id="meetingTime">—</span></div>
+        <div class="meta-item meta-lieu"><label>Lieu</label><span id="meetingLieu">—</span></div>
+      </div>
+    </div>
+
+    <div class="section-title">Informations du participant</div>
+    <div class="form-card">
+      <div class="field-group">
+        <label class="field-label">Nom <span>*</span></label>
+        <input type="text" class="field-input" id="nom" placeholder="NOM DE FAMILLE" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Prénoms <span>*</span></label>
+        <input type="text" class="field-input" id="prenoms" placeholder="Prénoms" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Genre <span>*</span></label>
+        <select class="field-input" id="genre">
+          <option value="">Sélectionner</option>
+          <option value="Masculin (M)">Masculin (M)</option>
+          <option value="Féminin (F)">Féminin (F)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="field-group">
+        <label class="field-label">Structure / Organisation <span>*</span></label>
+        <input type="text" class="field-input" id="structure" placeholder="Ex : ONEP" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Fonction <span>*</span></label>
+        <input type="text" class="field-input" id="fonction" placeholder="Ex : Directeur d'Audit" autocomplete="off">
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="field-group">
+        <label class="field-label">Numéro de téléphone <span>*</span></label>
+        <div class="field-row">
+          <div class="indicatif-box">🇨🇮 +225</div>
+          <input type="tel" class="field-input" id="telephone" placeholder="0X XX XX XX XX" autocomplete="off">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Adresse e-mail</label>
+        <input type="email" class="field-input" id="email" placeholder="prenom.nom@onepci.net" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="section-title">Émargement</div>
+    <div class="signature-card">
+      <div class="sig-header">
+        <span class="sig-label">Signature <span>*</span></span>
+        <button class="btn-effacer" onclick="clearSig()">Effacer</button>
+      </div>
+      <canvas id="signatureCanvas"></canvas>
+      <p class="sig-hint">Signez dans le cadre ci-dessus</p>
+    </div>
+
+    <button class="btn-submit" id="btnSubmit" onclick="soumettre()">Confirmer ma présence</button>
+    <p class="note"><span>*</span> Champs obligatoires. L'heure d'arrivée est enregistrée automatiquement.</p>
+  </div>
+</div>
+
+<div class="success-screen" id="successScreen">
+  <div class="success-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+  <h2 class="success-title">Présence enregistrée</h2>
+  <p class="success-msg">Votre émargement a bien été pris en compte.<br>Merci de votre participation.</p>
+  <div class="success-time" id="successTime"></div>
+  <p class="success-sync" id="successSync"></p>
+</div>
+
+<div class="error-screen" id="errorScreen">
+  <div class="error-icon">⚠️</div>
+  <h2 class="error-title">Lien invalide</h2>
+  <p class="error-msg">Ce lien ne contient pas les informations de réunion.<br>Veuillez scanner le QR code fourni par l'organisateur.</p>
+</div>
+
+<div class="footer"><strong>Office National de l'Eau Potable (ONEP)</strong><br>Direction de l'Audit et de la Qualité — Côte d'Ivoire</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let configOpen=false, WEBHOOK='', REUNION={}, hasSigned=false, drawing=false;
+
+// ================================================================
+// INIT
+// ================================================================
+window.addEventListener('load', function(){
+  const p = new URLSearchParams(window.location.search);
+  const mode = p.get('mode');
+
+  if(mode === 'participant'){
+    // Masquer config
+    document.getElementById('configToggleBar').style.display='none';
+    document.getElementById('configPanel').style.display='none';
+
+    const objet = p.get('objet') || '';
+    if(!objet){ document.getElementById('errorScreen').classList.add('visible'); return; }
+
+    WEBHOOK = decodeURIComponent(p.get('w') || '');
+    REUNION = {
+      direction: p.get('dir')   || '',
+      objet:     decodeURIComponent(objet),
+      date:      decodeURIComponent(p.get('date')  || ''),
+      heure:     decodeURIComponent(p.get('heure') || ''),
+      lieu:      decodeURIComponent(p.get('lieu')  || ''),
+      // Identifiant unique de la réunion = nom de l'onglet Sheets
+      onglet:    decodeURIComponent(p.get('onglet') || objet)
+    };
+    afficherReunion();
+    document.getElementById('qrPanel').style.display='none';
+    document.getElementById('formView').style.display='block';
+
+  } else {
+    // Mode organisateur — restaurer config
+    try{
+      const s = JSON.parse(localStorage.getItem('onep_cfg')||'null');
+      if(s){
+        document.getElementById('cfg-direction').value = s.direction||'DAQ';
+        document.getElementById('cfg-objet').value     = s.objet    ||'';
+        document.getElementById('cfg-date').value      = s.date     ||'';
+        document.getElementById('cfg-heure').value     = s.heure    ||'';
+        document.getElementById('cfg-lieu').value      = s.lieu     ||'';
+        document.getElementById('cfg-webhook').value   = s.webhook  ||'';
+        updateWS(s.webhook||'');
+        WEBHOOK='https://script.google.com/macros/s/AKfycbwZvvAsPsXjv-vwHfZ8Yp_E1zDmMTlKxLp09DDRSYOfY2sGtA57o_W2HWGiec0vIQUR/exec'; REUNION=s;
+        afficherReunion();
+        genQR(s);
+        document.getElementById('formView').style.display='block';
+      }
+    }catch(e){}
+  }
+});
+
+// ================================================================
+// CONFIG
+// ================================================================
+function toggleConfig(){
+  configOpen=!configOpen;
+  document.getElementById('configPanel').classList.toggle('expanded',configOpen);
+  document.getElementById('toggleIcon').classList.toggle('open',configOpen);
+}
+
+function appliquerConfig(){
+  const direction = document.getElementById('cfg-direction').value;
+  const objet     = document.getElementById('cfg-objet').value.trim();
+  const date      = document.getElementById('cfg-date').value.trim();
+  const heure     = document.getElementById('cfg-heure').value.trim();
+  const lieu      = document.getElementById('cfg-lieu').value.trim();
+  const webhook   = 'https://script.google.com/macros/s/AKfycbwZvvAsPsXjv-vwHfZ8Yp_E1zDmMTlKxLp09DDRSYOfY2sGtA57o_W2HWGiec0vIQUR/exec';
+
+  if(!objet||!date||!heure||!lieu){ toast('⚠ Remplissez tous les champs de la réunion',true); return; }
+
+  // Nom d'onglet : "[DIRECTION] Objet (Date)" — max 50 car pour Sheets
+  const onglet = (direction + ' — ' + objet + ' (' + date + ')').substring(0,50);
+
+  WEBHOOK = webhook;
+  REUNION = { direction, objet, date, heure, lieu, webhook, onglet };
+
+  try{ localStorage.setItem('onep_cfg', JSON.stringify(REUNION)); }catch(e){}
+
+  afficherReunion();
+  genQR(REUNION);
+  document.getElementById('formView').style.display='block';
+  configOpen=false;
+  document.getElementById('configPanel').classList.remove('expanded');
+  document.getElementById('toggleIcon').classList.remove('open');
+  toast('✔ Configuration sauvegardée ! QR Code prêt.',false);
+}
+
+// URL Apps Script fixe — pas de mise à jour dynamique nécessaire
+
+// ================================================================
+// AFFICHER RÉUNION
+// ================================================================
+function afficherReunion(){
+  document.getElementById('directionBadge').textContent = REUNION.direction||'—';
+  document.getElementById('meetingTitle').textContent   = REUNION.objet    ||'—';
+  document.getElementById('meetingDate').textContent    = REUNION.date     ||'—';
+  document.getElementById('meetingTime').textContent    = REUNION.heure    ||'—';
+  document.getElementById('meetingLieu').textContent    = REUNION.lieu     ||'—';
+}
+
+// ================================================================
+// GÉNÉRER QR CODE
+// ================================================================
+function genQR(cfg){
+  const base = window.location.href.split('?')[0];
+  const url  = base
+    + '?mode=participant'
+    + '&dir='    + encodeURIComponent(cfg.direction||'')
+    + '&objet='  + encodeURIComponent(cfg.objet   ||'')
+    + '&date='   + encodeURIComponent(cfg.date    ||'')
+    + '&heure='  + encodeURIComponent(cfg.heure   ||'')
+    + '&lieu='   + encodeURIComponent(cfg.lieu    ||'')
+    + '&onglet=' + encodeURIComponent(cfg.onglet  ||'')
+    + '&w='      + encodeURIComponent(cfg.webhook ||'');
+
+  document.getElementById('qrcode').innerHTML='';
+  new QRCode(document.getElementById('qrcode'),{
+    text:url, width:200, height:200,
+    colorDark:'#003B6F', colorLight:'#ffffff',
+    correctLevel:QRCode.CorrectLevel.M
+  });
+
+  // Lien de test cliquable
+  const lien = document.getElementById('qrTestLink');
+  lien.href = url;
+  lien.textContent = '🔗 Tester le lien participant (cliquez ici)';
+
+  document.getElementById('qrPanel').classList.add('visible');
+}
+
+// ================================================================
+// SIGNATURE
+// ================================================================
+const canvas=document.getElementById('signatureCanvas'), ctx=canvas.getContext('2d');
+function resizeCv(){
+  const r=canvas.getBoundingClientRect(),s=window.devicePixelRatio||1;
+  canvas.width=r.width*s; canvas.height=r.height*s;
+  ctx.scale(s,s); ctx.strokeStyle='#1a2a3a'; ctx.lineWidth=2.2; ctx.lineCap='round'; ctx.lineJoin='round';
+}
+resizeCv(); window.addEventListener('resize',resizeCv);
+function pos(e){const r=canvas.getBoundingClientRect(),src=e.touches?e.touches[0]:e;return{x:src.clientX-r.left,y:src.clientY-r.top};}
+canvas.addEventListener('mousedown',e=>{drawing=true;canvas.classList.add('active');const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);});
+canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();hasSigned=true;});
+canvas.addEventListener('mouseup',()=>drawing=false);
+canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;canvas.classList.add('active');const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();hasSigned=true;},{passive:false});
+canvas.addEventListener('touchend',()=>drawing=false);
+function clearSig(){resizeCv();hasSigned=false;canvas.classList.remove('active');}
+
+// ================================================================
+// SOUMETTRE
+// ================================================================
+async function soumettre(){
+  const nom=document.getElementById('nom').value.trim();
+  const prenoms=document.getElementById('prenoms').value.trim();
+  const genre=document.getElementById('genre').value;
+  const structure=document.getElementById('structure').value.trim();
+  const fonction=document.getElementById('fonction').value.trim();
+  const telephone=document.getElementById('telephone').value.trim();
+  const email=document.getElementById('email').value.trim();
+
+  if(!nom||!prenoms||!genre||!structure||!fonction||!telephone){toast('⚠ Remplissez tous les champs obligatoires',true);return;}
+  if(!hasSigned){toast('✏️ Apposez votre signature',true);return;}
+
+  const btn=document.getElementById('btnSubmit');
+  btn.disabled=true; btn.textContent='Envoi en cours...';
+
+  const now=new Date();
+  const heure=now.toTimeString().split(' ')[0];
+  const date=now.toLocaleDateString('fr-FR');
+
+  // L'onglet = nom de la réunion spécifique
+  const onglet = REUNION.onglet || REUNION.objet || 'Réunion';
+
+  const params = new URLSearchParams({
+    onglet,                          // ← nom de l'onglet Sheets = nom réunion
+    direction:           REUNION.direction||'—',
+    reunion:             REUNION.objet    ||'—',
+    date_reunion:        REUNION.date     ||'—',
+    heure_debut:         REUNION.heure   ||'—',
+    lieu:                REUNION.lieu    ||'—',
+    nom, prenoms, genre, structure, fonction,
+    telephone:           '+225'+telephone,
+    email:               email||'—',
+    heure_arrivee:       heure,
+    date_enregistrement: date
+  });
+
+  const wh = WEBHOOK;
+  let syncOk=false, syncMsg='';
+
+  if(wh && wh.includes('script.google.com')){
+    try{
+      await fetch(wh+'?'+params.toString(),{method:'GET',mode:'no-cors'});
+      syncMsg='✔ Données enregistrées dans Google Sheets'; syncOk=true;
+    }catch(err){
+      syncMsg='⚠ Erreur réseau — données non envoyées'; syncOk=false;
+    }
+  } else {
+    syncMsg='⚠ Google Sheets non configuré'; syncOk=false;
+  }
+
+  document.getElementById('formView').style.display='none';
+  document.getElementById('successScreen').classList.add('visible');
+  document.getElementById('successTime').textContent="Heure d'enregistrement : "+heure;
+  const sy=document.getElementById('successSync');
+  sy.textContent=syncMsg; sy.className='success-sync '+(syncOk?'ok':'err');
+  window.scrollTo(0,0);
+}
+
+// ================================================================
+// TOAST
+// ================================================================
+function toast(msg,isErr){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(isErr?' err':'');
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200);
+}
+</script>
+</body>
+</html>
