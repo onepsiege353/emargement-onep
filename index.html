@@ -479,6 +479,35 @@ function clearSig(){resizeCv();hasSigned=false;canvas.classList.remove('active')
 // ================================================================
 // SOUMETTRE
 // ================================================================
+// Envoi signature via fetch POST avec mode no-cors
+// Apps Script lit e.postData.contents (body brut)
+async function envoyerSignature(webhookUrl, onglet, nom, prenoms, heure, sigBase64) {
+  try {
+    // Encoder manuellement en form-urlencoded
+    const body = [
+      'action='        + encodeURIComponent('signature'),
+      'onglet='        + encodeURIComponent(onglet),
+      'nom='           + encodeURIComponent(nom),
+      'prenoms='       + encodeURIComponent(prenoms),
+      'heure_arrivee=' + encodeURIComponent(heure),
+      'signature='     + encodeURIComponent(sigBase64)
+    ].join('&');
+
+    await fetch(webhookUrl, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    body
+    });
+
+    // Attendre 2s que Apps Script traite
+    await new Promise(r => setTimeout(r, 2000));
+
+  } catch(err) {
+    console.warn('Signature non envoyée:', err);
+  }
+}
+
 async function soumettre(){
   const nom=document.getElementById('nom').value.trim();
   const prenoms=document.getElementById('prenoms').value.trim();
@@ -501,53 +530,45 @@ async function soumettre(){
   // L'onglet = nom de la réunion spécifique
   const onglet = REUNION.onglet || REUNION.objet || 'Réunion';
 
-  // Récupérer la signature en base64 (image PNG)
-  const signatureBase64 = canvas.toDataURL('image/png');
-
-  const params = new URLSearchParams({
-    onglet,
-    direction:           REUNION.direction||'—',
-    reunion:             REUNION.objet    ||'—',
-    date_reunion:        REUNION.date     ||'—',
-    heure_debut:         REUNION.heure   ||'—',
-    lieu:                REUNION.lieu    ||'—',
-    nom, prenoms, genre, structure, fonction,
-    telephone:           '+225'+telephone,
-    email:               email||'—',
-    heure_arrivee:       heure,
-    date_enregistrement: date
-  });
+  // Signature compressée
+  const sigCanvas = document.createElement('canvas');
+  sigCanvas.width  = 300; sigCanvas.height = 100;
+  const sigCtx = sigCanvas.getContext('2d');
+  sigCtx.fillStyle = '#FFFFFF';
+  sigCtx.fillRect(0, 0, 300, 100);
+  sigCtx.drawImage(canvas, 0, 0, 300, 100);
+  const sigJpeg = sigCanvas.toDataURL('image/jpeg', 0.5);
 
   const wh = WEBHOOK;
   let syncOk=false, syncMsg='';
 
-  if(wh && wh.includes('script.google.com')){
+  if(!wh || !wh.includes('script.google.com')){
+    syncMsg='⚠ Google Sheets non configuré'; syncOk=false;
+  } else {
     try{
-      // Envoi principal des données texte
-      await fetch(wh+'?'+params.toString(),{method:'GET',mode:'no-cors'});
+      // ÉTAPE 1 : Envoi données texte via GET
+      const paramsTexte = new URLSearchParams({
+        onglet,
+        direction:           REUNION.direction||'—',
+        reunion:             REUNION.objet    ||'—',
+        date_reunion:        REUNION.date     ||'—',
+        heure_debut:         REUNION.heure   ||'—',
+        lieu:                REUNION.lieu    ||'—',
+        nom, prenoms, genre, structure, fonction,
+        telephone:           '+225'+telephone,
+        email:               email||'—',
+        heure_arrivee:       heure,
+        date_enregistrement: date
+      });
+      await fetch(wh+'?'+paramsTexte.toString(), {method:'GET', mode:'no-cors'});
 
-      // Envoi de la signature séparément via POST
-      const sigParams = new URLSearchParams({
-        action:    'signature',
-        onglet:    onglet,
-        nom:       nom,
-        prenoms:   prenoms,
-        heure_arrivee: heure,
-        signature: signatureBase64
-      });
-      await fetch(wh, {
-        method:  'POST',
-        mode:    'no-cors',
-        headers: {'Content-Type':'application/x-www-form-urlencoded'},
-        body:    sigParams.toString()
-      });
+      // ÉTAPE 2 : Envoi signature via iframe POST (contourne no-cors body)
+      await envoyerSignature(wh, onglet, nom, prenoms, heure, sigJpeg);
 
       syncMsg='✔ Présence et signature enregistrées dans Google Sheets'; syncOk=true;
     }catch(err){
       syncMsg='⚠ Erreur réseau — données non envoyées'; syncOk=false;
     }
-  } else {
-    syncMsg='⚠ Google Sheets non configuré'; syncOk=false;
   }
 
   document.getElementById('formView').style.display='none';
