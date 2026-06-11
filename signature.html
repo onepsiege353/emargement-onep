@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONEP — Signature</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:#F4F7FB;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+  .card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,59,111,0.10);padding:32px;max-width:480px;width:100%;text-align:center;}
+  .logo{font-family:'Playfair Display',serif;color:#003B6F;font-size:22px;font-weight:600;margin-bottom:4px;}
+  .sub{font-size:12px;color:#6B7280;margin-bottom:24px;}
+  .gold{height:3px;background:linear-gradient(90deg,#003B6F,#C9962A,#003B6F);border-radius:2px;margin-bottom:24px;}
+  .info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#F4F7FB;border-radius:8px;margin-bottom:8px;font-size:13px;}
+  .info-label{color:#6B7280;font-weight:500;}
+  .info-val{color:#003B6F;font-weight:600;}
+  .sig-box{border:2px solid #003B6F;border-radius:12px;padding:12px;margin:20px 0;background:#FAFCFF;}
+  .sig-box img{max-width:100%;height:auto;display:block;border-radius:6px;}
+  .sig-title{font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:#E8F5EE;color:#1A7F4B;font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;margin-top:16px;}
+  .error{color:#C0392B;font-size:14px;margin-top:16px;}
+  .footer{margin-top:20px;font-size:11px;color:#b0bcc8;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">ONEP</div>
+  <div class="sub">Office National de l'Eau Potable — Émargement</div>
+  <div class="gold"></div>
+
+  <div id="content">
+    <p style="color:#6B7280;font-size:13px;">Chargement...</p>
+  </div>
+
+  <div class="footer">Ce document est généré automatiquement par le système d'émargement ONEP</div>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+  const params = new URLSearchParams(window.location.search);
+  const id     = params.get('id');
+  const div    = document.getElementById('content');
+
+  if (!id) {
+    div.innerHTML = '<p class="error">⚠️ Lien invalide — identifiant manquant.</p>';
+    return;
+  }
+
+  // Chercher dans localStorage (même navigateur que le participant)
+  // OU chercher dans tous les localStorage disponibles
+  let data = null;
+
+  // Chercher dans le localStorage courant
+  try { data = JSON.parse(localStorage.getItem(id)); } catch(e){}
+
+  if (!data) {
+    // La signature est peut-être sur un autre appareil
+    // Afficher un message explicatif
+    div.innerHTML = \`
+      <p class="error" style="color:#C9962A;">⚠️ Signature introuvable sur cet appareil.</p>
+      <p style="font-size:12px;color:#6B7280;margin-top:10px;line-height:1.6;">
+        La signature a été créée sur un autre appareil ou navigateur.<br>
+        Consultez directement la liste de présence dans Google Sheets.
+      </p>
+    \`;
+    return;
+  }
+
+  div.innerHTML = \`
+    <div class="info-row"><span class="info-label">Nom</span><span class="info-val">\${data.nom || '—'} \${data.prenoms || ''}</span></div>
+    <div class="info-row"><span class="info-label">Réunion</span><span class="info-val" style="font-size:11px;max-width:200px;text-align:right;">\${data.onglet || '—'}</span></div>
+    <div class="info-row"><span class="info-label">Heure d'arrivée</span><span class="info-val">\${data.heure || '—'}</span></div>
+    <div class="info-row"><span class="info-label">Date</span><span class="info-val">\${data.date || '—'}</span></div>
+    <div class="sig-box">
+      <div class="sig-title">Signature du participant</div>
+      <img src="\${data.sig}" alt="Signature de \${data.nom}">
+    </div>
+    <div class="badge">✔ Émargement confirmé</div>
+  \`;
+});
+</script>
+</body>
+</html>
