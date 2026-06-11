@@ -501,8 +501,11 @@ async function soumettre(){
   // L'onglet = nom de la réunion spécifique
   const onglet = REUNION.onglet || REUNION.objet || 'Réunion';
 
+  // Récupérer la signature en base64 (image PNG)
+  const signatureBase64 = canvas.toDataURL('image/png');
+
   const params = new URLSearchParams({
-    onglet,                          // ← nom de l'onglet Sheets = nom réunion
+    onglet,
     direction:           REUNION.direction||'—',
     reunion:             REUNION.objet    ||'—',
     date_reunion:        REUNION.date     ||'—',
@@ -520,8 +523,26 @@ async function soumettre(){
 
   if(wh && wh.includes('script.google.com')){
     try{
+      // Envoi principal des données texte
       await fetch(wh+'?'+params.toString(),{method:'GET',mode:'no-cors'});
-      syncMsg='✔ Données enregistrées dans Google Sheets'; syncOk=true;
+
+      // Envoi de la signature séparément via POST
+      const sigParams = new URLSearchParams({
+        action:    'signature',
+        onglet:    onglet,
+        nom:       nom,
+        prenoms:   prenoms,
+        heure_arrivee: heure,
+        signature: signatureBase64
+      });
+      await fetch(wh, {
+        method:  'POST',
+        mode:    'no-cors',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body:    sigParams.toString()
+      });
+
+      syncMsg='✔ Présence et signature enregistrées dans Google Sheets'; syncOk=true;
     }catch(err){
       syncMsg='⚠ Erreur réseau — données non envoyées'; syncOk=false;
     }
